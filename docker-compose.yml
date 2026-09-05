@@ -1,0 +1,48 @@
+services:
+  qdrant-brain-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qdrant-brain-mcp
+    restart: unless-stopped
+    ports:
+      - "5006:5006"
+    environment:
+      - QDRANT_URL=http://qdrant:6333
+      - PORT=5006
+      - HOST=0.0.0.0
+      - EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
+      - RERANKER_MODEL=Xenova/ms-marco-MiniLM-L-6-v2
+      - VECTOR_DIM=384
+      - MEMORY_COLLECTION=collective_memories
+      - DOCUMENT_COLLECTION=collective_documents
+      - ONNX_THREADS=1
+      - OMP_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
+      - OPENBLAS_NUM_THREADS=1
+      - ORT_INTRA_OP_NUM_THREADS=1
+      - VECTOR_SCORE_THRESHOLD=0.64
+      - MIN_RELEVANCE_CONFIDENCE=0.05
+      - MAX_CANDIDATES_FOR_RERANK=8
+      - TOOL_TIMEOUT=20.0
+      - NEAR_DUP_COSINE_THRESHOLD=0.92
+      - RECENCY_TIE_BOOST=0.03
+      - MAX_MEMORY_CHARS=20000
+      - MAX_DOCUMENT_CHARS=200000
+      - MAX_BATCH_ITEMS=50
+    volumes:
+      - model_cache:/root/.cache/fastembed
+    networks:
+      - llm_ai-net
+    # Anti-OOM Resource Guardrails
+    mem_limit: 1024m
+    mem_reservation: 384m
+    cpus: 4.0
+
+volumes:
+  model_cache:
+    name: qdrant_brain_mcp_cache
+
+networks:
+  llm_ai-net:
+    external: true
