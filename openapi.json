@@ -1,0 +1,814 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Qdrant Collective Brain API",
+    "version": "1.0.0",
+    "description": "Cognitive memory and knowledge base API powered by Qdrant, FastEmbed embeddings (bge-small-en-v1.5), and cross-encoder reranking (ms-marco-MiniLM-L-6-v2). Designed for cross-agent memory persistence, note-taking, and documentation retrieval."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5006",
+      "description": "Local Host"
+    },
+    {
+      "url": "http://qdrant-brain-mcp:5006",
+      "description": "Docker Network (Open-WebUI)"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health_check",
+        "summary": "Health check endpoint",
+        "description": "Returns system health, collection counts, and memory footprint.",
+        "responses": {
+          "200": {
+            "description": "Server is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/remember_fact_or_preference": {
+      "post": {
+        "operationId": "remember_fact_or_preference",
+        "summary": "Save an important fact, user preference, instruction, or rule",
+        "description": "Store a specific fact, rule, or preference about the user, system, or project in the collective brain.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fact"
+                ],
+                "properties": {
+                  "fact": {
+                    "type": "string",
+                    "description": "The statement, preference, rule, or fact to remember."
+                  },
+                  "category": {
+                    "type": "string",
+                    "default": "preference",
+                    "description": "Category (preference, fact, rule, decision)."
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": [],
+                    "description": "Keywords/tags for filtering."
+                  },
+                  "source": {
+                    "type": "string",
+                    "default": "agent",
+                    "description": "Client/agent identifier."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Memory stored confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/save_note": {
+      "post": {
+        "operationId": "save_note",
+        "summary": "Save a conceptual note, idea, project discussion, or decision",
+        "description": "Save a structured note, session summary, or architecture decision to the collective brain.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "content"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "Descriptive title for the note."
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Markdown or body text of the note."
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": [],
+                    "description": "Topic tags."
+                  },
+                  "source": {
+                    "type": "string",
+                    "default": "agent",
+                    "description": "Client/agent identifier."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Note saved confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/remember_facts_batch": {
+      "post": {
+        "operationId": "remember_facts_batch",
+        "summary": "Store multiple facts or preferences at once",
+        "description": "Batch ingest multiple facts or preferences in a single efficient vector computation.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "facts"
+                ],
+                "properties": {
+                  "facts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "List of facts to store."
+                  },
+                  "category": {
+                    "type": "string",
+                    "default": "fact",
+                    "description": "Category for all items."
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": [],
+                    "description": "Common tags."
+                  },
+                  "source": {
+                    "type": "string",
+                    "default": "agent",
+                    "description": "Client/agent identifier."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Batch confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/index_document": {
+      "post": {
+        "operationId": "index_document",
+        "summary": "Ingest and chunk a long-form document or guide",
+        "description": "Splits content into overlapping chunks, generates embeddings, and indexes them with document traceability.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "content"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "Document title or filename."
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Full markdown or text body."
+                  },
+                  "category": {
+                    "type": "string",
+                    "default": "doc",
+                    "description": "Category (guide, doc, manual, code)."
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "source": {
+                    "type": "string",
+                    "default": "agent"
+                  },
+                  "chunk_size": {
+                    "type": "integer",
+                    "default": 800
+                  },
+                  "chunk_overlap": {
+                    "type": "integer",
+                    "default": 150
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Document indexed confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recall_memories": {
+      "post": {
+        "operationId": "recall_memories",
+        "summary": "Search memories/notes with semantic search and cross-encoder reranking",
+        "description": "Queries stored memories and notes, applying two-stage retrieval (vector search + cross-encoder reranking).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "Natural language search query."
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "default": 5,
+                    "description": "Number of items to return."
+                  },
+                  "category": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Category filter."
+                  },
+                  "tag": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Tag filter."
+                  },
+                  "use_reranker": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether to run cross-encoder reranker."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recalled memories with confidence scores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/search_documents": {
+      "post": {
+        "operationId": "search_documents",
+        "summary": "Search long-form document chunks with reranking",
+        "description": "Search indexed manuals and guides to return the most relevant document sections.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "Query or question."
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "default": 5
+                  },
+                  "tag": {
+                    "type": "string",
+                    "default": ""
+                  },
+                  "use_reranker": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Document sections found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/unified_search": {
+      "post": {
+        "operationId": "unified_search",
+        "summary": "Search across ALL memories, notes, and documents simultaneously",
+        "description": "Queries both memories and documents, cross-encoder reranks the unified candidate pool.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "Query or question."
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "default": 5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Combined ranked search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/list_recent_memories": {
+      "post": {
+        "operationId": "list_recent_memories",
+        "summary": "Browse recently saved memories chronologically",
+        "description": "Retrieve recent items without requiring a search query.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": "integer",
+                    "default": 10
+                  },
+                  "category": {
+                    "type": "string",
+                    "default": ""
+                  },
+                  "tag": {
+                    "type": "string",
+                    "default": ""
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recent memories list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/list_all_documents": {
+      "post": {
+        "operationId": "list_all_documents",
+        "summary": "List all registered documents in the knowledge base",
+        "description": "Browse all indexed documents with title, chunk count, and creation date.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": "integer",
+                    "default": 20
+                  },
+                  "tag": {
+                    "type": "string",
+                    "default": ""
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Indexed documents table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/get_memory_details": {
+      "post": {
+        "operationId": "get_memory_details",
+        "summary": "Retrieve full content and metadata for a specific memory",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "memory_id"
+                ],
+                "properties": {
+                  "memory_id": {
+                    "type": "string",
+                    "description": "Unique memory ID."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Full memory details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/get_document_full_content": {
+      "post": {
+        "operationId": "get_document_full_content",
+        "summary": "Reassemble full text of an indexed document",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "document_id_or_title"
+                ],
+                "properties": {
+                  "document_id_or_title": {
+                    "type": "string",
+                    "description": "Document ID or exact title."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete document markdown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/update_memory": {
+      "post": {
+        "operationId": "update_memory",
+        "summary": "Update content, title, category, or tags of an existing memory",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "memory_id"
+                ],
+                "properties": {
+                  "memory_id": {
+                    "type": "string",
+                    "description": "Target memory ID."
+                  },
+                  "content": {
+                    "type": "string",
+                    "default": "",
+                    "description": "New content."
+                  },
+                  "title": {
+                    "type": "string",
+                    "default": ""
+                  },
+                  "category": {
+                    "type": "string",
+                    "default": ""
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forget_memory": {
+      "post": {
+        "operationId": "forget_memory",
+        "summary": "Delete a specific memory by ID",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "memory_id"
+                ],
+                "properties": {
+                  "memory_id": {
+                    "type": "string",
+                    "description": "Memory ID to delete."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deletion confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delete_document": {
+      "post": {
+        "operationId": "delete_document",
+        "summary": "Delete an entire document and its chunks",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "document_id_or_title"
+                ],
+                "properties": {
+                  "document_id_or_title": {
+                    "type": "string",
+                    "description": "Document ID or exact title to delete."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Document deletion confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/list_topics_and_tags": {
+      "get": {
+        "operationId": "list_topics_and_tags",
+        "summary": "Discover all categories and tags stored in the brain",
+        "responses": {
+          "200": {
+            "description": "All categories and tags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inspect_brain_health": {
+      "get": {
+        "operationId": "inspect_brain_health",
+        "summary": "Inspect system health, points count, and memory footprint",
+        "responses": {
+          "200": {
+            "description": "Health report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/get_brain_guide": {
+      "get": {
+        "operationId": "get_brain_guide",
+        "summary": "Get complete usage guide and best practices for agents",
+        "responses": {
+          "200": {
+            "description": "Usage guide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clear_brain": {
+      "post": {
+        "operationId": "clear_brain",
+        "summary": "Reset brain collections with safety confirmation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "target",
+                  "confirm"
+                ],
+                "properties": {
+                  "target": {
+                    "type": "string",
+                    "enum": [
+                      "memories",
+                      "documents",
+                      "all"
+                    ]
+                  },
+                  "confirm": {
+                    "type": "string",
+                    "description": "Must be: 'I understand this permanently deletes agent brain data'"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reset confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
